@@ -10,6 +10,7 @@ import glob
 import io
 import os
 import re
+from unittest import mock
 
 import nbformat
 
@@ -126,24 +127,17 @@ class TestExecute(PreprocessorTestsBase):
         input_nb, output_nb = self.run_notebook(filename, {}, res)
         self.assert_notebooks_equal(input_nb, output_nb)
 
-    def test_disable_stdin(self):
-        """Test disabling standard input"""
+    def test_stdin(self):
+        """Test standard input"""
         current_dir = os.path.dirname(__file__)
-        filename = os.path.join(current_dir, 'files', 'Disable Stdin.ipynb')
+        #XXX: Need to rename the notebook
+        filename = os.path.join(current_dir, 'files', 'Stdin.ipynb')
         res = self.build_resources()
         res['metadata']['path'] = os.path.dirname(filename)
-        input_nb, output_nb = self.run_notebook(filename, dict(allow_errors=True), res)
 
-        # We need to special-case this particular notebook, because the
-        # traceback contains machine-specific stuff like where IPython
-        # is installed. It is sufficient here to just check that an error
-        # was thrown, and that it was a StdinNotImplementedError
-        self.assertEqual(len(output_nb['cells']), 1)
-        self.assertEqual(len(output_nb['cells'][0]['outputs']), 1)
-        output = output_nb['cells'][0]['outputs'][0]
-        self.assertEqual(output['output_type'], 'error')
-        self.assertEqual(output['ename'], 'StdinNotImplementedError')
-        self.assertEqual(output['evalue'], 'raw_input was called, but this frontend does not support input requests.')
+        with mock.patch('sys.stdin.readline', return_value='a name\n'):
+            input_nb, output_nb = self.run_notebook(filename, dict(allow_errors=True), res)
+        #XXX: Asserts
 
     def test_timeout(self):
         """Check that an error is raised when a computation times out"""
@@ -167,3 +161,4 @@ class TestExecute(PreprocessorTestsBase):
         res = self.build_resources()
         res['metadata']['path'] = os.path.dirname(filename)
         assert_raises(CellExecutionError, self.run_notebook, filename, dict(allow_errors=False), res)
+

@@ -4,6 +4,7 @@
 # Distributed under the terms of the Modified BSD License.
 
 import os
+import sys
 from textwrap import dedent
 
 try:
@@ -139,7 +140,7 @@ class ExecutePreprocessor(Preprocessor):
             extra_arguments=self.extra_arguments,
             stderr=open(os.devnull, 'w'),
             cwd=path)
-        self.kc.allow_stdin = False
+        self.kc.allow_stdin = True
 
         try:
             nb, resources = super(ExecutePreprocessor, self).preprocess(nb, resources)
@@ -182,6 +183,14 @@ class ExecutePreprocessor(Preprocessor):
         self.log.debug("Executing cell:\n%s", cell.source)
         # wait for finish, with timeout
         while True:
+            try:
+                msg = self.kc.get_stdin_msg(timeout=4)
+            except Empty:
+                continue
+            else:
+                 msg_type = msg['msg_type']
+                 if msg_type == 'input_request':
+                     self.kc.input(sys.stdin.readline().rstrip('\n'))
             try:
                 timeout = self.timeout
                 if timeout < 0:
